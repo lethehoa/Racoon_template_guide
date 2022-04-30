@@ -2,19 +2,20 @@
 
 <p id="menu"> </p>
 
-## 1. <a href="#introduction">Introduction</a>
-## 2. <a href="#components">Template Components</a>
-- <a href="#infor_block"> Info block </a>
-- <a href="#request_block">Requests block </a>
+## I. <a href="#introduction">Introduction</a>
+## II. <a href="#components">Template Components</a>
+1. <a href="#infor_block"> Info block </a>
+2. <a href="#request_block">Requests block </a>
   
-  a. <a href="#raw_request"> Raw request </a>
+    a. <a href="#request_block"> Raw request </a>
   
-  b. <a href="#fuzzing"> Fuzzing module </a>
+    b. <a href="#fuzzing"> Fuzzing module </a>
   
-  c. <a href="#operator"> Operator </a>
-    - <a href="#matcher"> Matcher </a>
-    - <a href="#exposer">Exposer </a>
+    c. <a href="#operator"> Operator </a>
 
+    - <a href="#operator"> Matcher </a>
+    - <a href="#exposer">Exposer </a>
+    - <a href="#helper">Helper Functions </a>
 ---
 <p id="introduction"> </p>
 
@@ -27,12 +28,12 @@
 ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝
 ```
                                                     
-## 1. **Introduction**
+## I. **Introduction**
 Racoon is based on the perception of using YAML template file as the input for sent, receive and process data from request. One of the main strength of our tool is customizable template. A knowledge user can create their own template suitable with their need. Those template are written by YAML because this language has a simple and clean syntax and very human-readable.
 
 <p id="components"> </p>
 
-## 2. Template Components
+## II. Template Components
 
 <p id="infor_block"> </p>
 
@@ -66,7 +67,7 @@ info:
 <p id="request_block"> </p>
 
 > ### 2. **Request block**
->> **a. Raw request**
+>> **a. Raw request**:
 Multiple requests can be made from only one single template. Requests block specifies the start of the requests for the template.
 
 ```
@@ -236,10 +237,11 @@ requests:
         regex:
           - '([a-zA-Z0-9\.\-]+)\.([a-z0-9]+)\.([a-z0-9]+)\.([a-z0-9]+)\.\w+'   # Print extracted ${hostName} in output
 ```
+<a href="#menu"> Back to main menu </a>
 
 <p id="fuzzing"></p>
 
-### **HTTP Fuzzing**:
+>> **b. Fuzzing**:
 ---
 Racoon supports running various type of payloads in multiple format. User can perform batteringram, pitchfork and clusterbomb attacks depends on their need. Those wordlists for these attacks needs to be defined during the request definition under the Payload field.
 
@@ -263,7 +265,7 @@ payloads:
 
 >> **c. Operator**
 
-<p id="matcher"> </p>
+<p id="operator"> </p>
 
 ### **Matcher**:
 
@@ -311,7 +313,7 @@ requests:
         condition: and
 
 ```
-
+<a href="#menu"> Back to main menu </a>
 
 ### **Exposer**:
 
@@ -426,7 +428,6 @@ exposer:
 >interactsh_response: the response that the interact.sh server sent to the client
 
 
-
 **Preprocessors**
 
 ---
@@ -458,3 +459,39 @@ requests:
           - "contains((body_2), '{{randstr}}')"
         condition: and
 ```
+<a href="#menu"> Back to main menu </a>
+
+<p id="helper"> </p>
+
+### **Helper Function**:
+
+---
+
+|Function |Description |Example |
+|--- | --- | ---|
+|base64(argument) [string] |Encode a given string to base64| base64("Hello") ==> SGVsbG8gd29ybGQ=
+|base64_decode(argument) [string]|Decode a given base64 to string| base64_decode("SGVsbG8gd29ybGQ=") ==> "Hello world"|
+|concat(arguments_1, arguments_2, arguments_3,...) [string, string, string,...] |Concatenates the given arguments to string |concat("Hello", " ", "world") ==> "Hello world"|
+|contains(argument_1, argument_2) [string, string] |Check if a argument_1 contains argument_2 | contains("Hello", "He") ==> true|
+|html_escape(argument) [string]| HTML escapes the given input string|html_escape("\<p>Hello world\</p>") ==> \<p>Hello world\</p>|
+|html_unescape(argument) [string] |HTML escapes the given input string| html_unescape("\&lt;body\&gt;test\&lt;/body\&gt;") ==> "test"|
+|len(argument) [string]| Return the length of the input| len("test") ==> 4|
+|regex(pattern, argument) [string, string]| Check if a string contains the specified search pattern|regex("H([a-z]+)o", "Hello") ==> true |
+|remove_bad_chars(argument_1, argument_2) [string, string] | Remove the argument_2 from argument_1| remove_bad_chars("Hello", "lo") ==> "Hel"|
+|repeat(argument_1, argument_2) [string, int] | Repeat the given string argument_1 with argument_2 times| repeat("He", 5) ==> HeHeHeHeHe |
+|replace(given_string, old_string, new_string) [string, string, string]| Replace old_string with new_string in the given_string [string, string, string] | replace("Hello", "He", "Ha") ==> Hallo|
+|replace_regex(given_string, regex, new_string) [string, string, string] | Replace old_string(matching the given regex) with old_string | replace_regex("tes0123t", "(\\d+)", "") ==> test|
+|reverse(string) [string] | Reverse the given input string| reverse("Hello") ==> olleH|
+|to_lower(string) [string]| Transforms the given string into lowercase characters |to_lower("HELLO") ==> hello|
+|to_lower("HELLO") [string]| Transforms the given string into uppercase characters| to_upper("hello") // HELLO|
+|trim(given_string, cut_string) [string, string] | Remove all of each character of cut_string from given_string| trim("xyTestxyxy", "xy") ==> "Test"|
+|trim_left(given_string, cut_string) [string, string] | Remove all of each character of cut_string from given_string all about the left| trim_left("xyTestxyxy", "xy") ==> "Testxy"|
+|trim_prefix(given_string, cut_string) [string, string] | Returns given_string without the supplied trim_prefix string | trim_prefix("xyTestxyxy", "xy") ==> "Testxyxy"|
+|trim_right(given_string, cut_string) [string, string] | Remove all of each character of cut_string from given_string in the front| trim_prefix("xyTestxyxy", "xy") ==> "Testxyxy"|
+|trim_space(given_string) [string, string] | Remove all the space in the given_string| trim_space("Hello   world     ") ==> "Hello world"|
+|trim_suffix(input, suffix string) [string, string] | Returns given_string without the supplied suffix string | trim_suffix("xxxxTestxx", "xx") ==> "xxxxTest"|
+|url_decode(given_string) [string] | URL decodes the given_string| url_decode("https%3A%2F%2Fwww.google.com%2Fsearch%3Fq%3Dpentest") ==> "https://www.google.com/search?q=pentest" |
+|url_encode(input string) [string] | URL encodes the given_string| url_encode("https://www.google.com/search?q=pentest") ==> "https%3A%2F%2Fwww.google.com%2Fsearch%3Fq%3Dpentest" |
+|wait_for(given_seconds) [int] | Wait for given_seconds to continue| wait_for(10) ==> true|
+
+<a href="#menu"> Back to main menu </a>
